@@ -4,6 +4,7 @@ use std::io::{self, Read};
 use std::process::{Command, exit};
 
 use crate::lexer::Lexer;
+use crate::parser::parse_program;
 
 #[derive(Debug, Default)]
 enum CompilerDriverOption {
@@ -79,10 +80,13 @@ impl CompilerDriver {
 
         let mut code = String::new();
         File::open(self.filename_preprocessed())?.read_to_string(&mut code)?;
+
         let mut lexer = Lexer::new(&code);
-        while let Some(token) = lexer.next_token() {
-            println!("[token] {token}");
-        }
+        // while let Some(token) = lexer.next_token() {
+        //     println!("[token] {token}");
+        // }
+        let program = parse_program(&mut lexer);
+        println!("{program:#?}");
 
         // self.assemble_and_link()?;
         Ok(())

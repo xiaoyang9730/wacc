@@ -2,6 +2,7 @@ mod compiler_driver;
 use compiler_driver::CompilerDriver;
 
 mod lexer;
+mod parser;
 
 fn main() {
     let cd = CompilerDriver::config();
