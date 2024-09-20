@@ -4,9 +4,9 @@ use compiler_driver::CompilerDriver;
 mod lexer;
 mod parser;
 
+use std::env;
+
 fn main() {
-    let cd = CompilerDriver::config();
-    if let Err(e) = cd.run() {
-        eprintln!("[main] Failed to run compiler driver: {e}");
-    }
+    let compiler_driver = CompilerDriver::config(env::args());
+    compiler_driver.run();
 }
