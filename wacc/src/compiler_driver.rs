@@ -1,12 +1,13 @@
 use std::env::Args;
 use std::fs::File;
-use std::io::{self, Read};
+use std::io::{self, Read, Write};
 use std::process::{Command, exit};
 
 use crate::lexer::{Lexer, Tokens};
 use crate::parser::Parser;
-use crate::ast_nodes::CProgram;
+use crate::ast_nodes::{CProgram, AsmProgram};
 use crate::codegen::Generator;
+use crate::emit::emit_asm_program;
 
 #[derive(Debug, Default, PartialEq, PartialOrd)]
 enum CompilerDriverOption {
@@ -89,15 +90,21 @@ impl CompilerDriver {
         c_program
     }
 
-    fn codegen(&self, c_program: CProgram) {
+    fn codegen(&self, c_program: CProgram) -> AsmProgram {
         println!("[compiler driver] --- Stage: CODEGEN ---");
         let asm_program = Generator::from(c_program).gen();
         println!("[compiler driver] Generated assembly program:\n{asm_program:#?}");
+        asm_program
     }
 
-    fn emit_assembly(&self) {
+    fn emit_assembly(&self, asm_program: AsmProgram) -> io::Result<()> {
         println!("[compiler driver] --- Stage: EMIT ASSEMBLY ---");
-        todo!("-S option");
+        let asm_code = emit_asm_program(asm_program);
+        println!("[compiler driver] Emit assembly code:\n{asm_code}");
+
+        let mut asm_file = File::create(self.filename_assembly())?;
+        writeln!(asm_file, "{asm_code}")?;
+        Ok(())
     }
 
     fn assemble_and_link(&self) -> io::Result<()> {
@@ -122,17 +129,20 @@ impl CompilerDriver {
         if self.option < CompilerDriverOption::Parse {
             return;
         }
-        let c_progrem = self.parse(lexer.tokens());
+        let c_program = self.parse(lexer.tokens());
 
         if self.option < CompilerDriverOption::Codegen {
             return;
         }
-        self.codegen(c_progrem);
+        let asm_program = self.codegen(c_program);
 
         if self.option < CompilerDriverOption::EmitAssembly {
             return;
         }
-        self.emit_assembly();
+        if let Err(e) = self.emit_assembly(asm_program) {
+            eprintln!("[compiler driver] Failed to write assembly code to `{}`: {e}", self.filename_assembly());
+            exit(1);
+        }
 
         if self.option < CompilerDriverOption::All {
             return;

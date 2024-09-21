@@ -5,6 +5,7 @@ mod lexer;
 mod parser;
 mod ast_nodes;
 mod codegen;
+mod emit;
 
 use std::env;
 

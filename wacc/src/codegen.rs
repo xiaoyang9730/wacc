@@ -4,15 +4,15 @@ pub struct Generator {
     c_program: CProgram,
 }
 
-impl From<CProgram> for Generator {
-    fn from(c_program: CProgram) -> Self {
-        Self { c_program }
-    }
-}
-
 impl Generator {
     pub fn gen(&self) -> AsmProgram {
         gen_program(&self.c_program)
+    }
+}
+
+impl From<CProgram> for Generator {
+    fn from(c_program: CProgram) -> Self {
+        Self { c_program }
     }
 }
 
