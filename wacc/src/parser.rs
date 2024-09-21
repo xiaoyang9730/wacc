@@ -1,35 +1,6 @@
 use std::process::exit;
 use crate::lexer::{Token, Tokens};
-
-#[derive(Debug)]
-pub enum Program {
-    #[allow(unused)]
-    Program(FunctionDefinition),
-}
-
-#[derive(Debug)]
-pub enum FunctionDefinition {
-    #[allow(unused)]
-    Function(Identifier, Statement),
-}
-
-#[derive(Debug)]
-pub enum Identifier {
-    #[allow(unused)]
-    Identifier(String),
-}
-
-#[derive(Debug)]
-pub enum Statement {
-    #[allow(unused)]
-    Return(Expression),
-}
-
-#[derive(Debug)]
-pub enum Expression {
-    #[allow(unused)]
-    Constant(u32)
-}
+use crate::ast_nodes::*;
 
 pub struct Parser<'a> {
     tokens: Tokens<'a>,
@@ -42,7 +13,7 @@ impl<'a> From<Tokens<'a>> for Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    pub fn parse(&mut self) -> Program {
+    pub fn parse(&mut self) -> CProgram {
         self.parse_program()
     }
 
@@ -57,16 +28,16 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_program(&mut self) -> Program {
+    fn parse_program(&mut self) -> CProgram {
         let function_definition = self.parse_function_definition();
         if self.tokens.next().is_some() {
             eprintln!("[parser] Expect no tokens after function");
             exit(1);
         }
-        Program::Program(function_definition)
+        c::Program(function_definition)
     }
 
-    fn parse_function_definition(&mut self) -> FunctionDefinition {
+    fn parse_function_definition(&mut self) -> CFunctionDefinition {
         self.expect_next(Token::from("int"));
         let name = self.parse_identifier();
         self.expect_next(Token::from("("));
@@ -75,29 +46,29 @@ impl<'a> Parser<'a> {
         self.expect_next(Token::from("{"));
         let statement = self.parse_statement();
         self.expect_next(Token::from("}"));
-        FunctionDefinition::Function(name, statement)
+        c::Function(name, statement)
     }
 
-    fn parse_identifier(&mut self) -> Identifier {
+    fn parse_identifier(&mut self) -> CIdentifier {
         let Some(Token::Identifier(identifier)) = self.tokens.next() else {
             eprintln!("[parser] No tokens left when parsing identifier");
             exit(1);
         };
-        Identifier::Identifier(identifier.to_string())
+        c::Identifier(identifier.to_string())
     }
 
-    fn parse_statement(&mut self) -> Statement {
+    fn parse_statement(&mut self) -> CStatement {
         self.expect_next(Token::from("return"));
         let expression = self.parse_exxpression();
         self.expect_next(Token::from(";"));
-        Statement::Return(expression)
+        c::Return(expression)
     }
 
-    fn parse_exxpression(&mut self) -> Expression {
+    fn parse_exxpression(&mut self) -> CExpression {
         let Some(Token::Constant(integer)) = self.tokens.next() else {
             eprintln!("[parser] No tokens left when parsing expression");
             exit(1);
         };
-        Expression::Constant(integer)
+        c::Constant(integer)
     }
 }

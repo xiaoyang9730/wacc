@@ -5,6 +5,8 @@ use std::process::{Command, exit};
 
 use crate::lexer::{Lexer, Tokens};
 use crate::parser::Parser;
+use crate::ast_nodes::CProgram;
+use crate::codegen::Generator;
 
 #[derive(Debug, Default, PartialEq, PartialOrd)]
 enum CompilerDriverOption {
@@ -79,17 +81,18 @@ impl CompilerDriver {
         Ok(lexer)
     }
 
-    fn parse(&self, tokens: Tokens) {
+    fn parse(&self, tokens: Tokens) -> CProgram {
         println!("[compiler driver] --- Stage: PARSE ---");
 
-        let program = Parser::from(tokens).parse();
-        println!("[compiler driver] Abstract syntax tree:\n{program:#?}");
-        // unimplemented!("--parse option")
+        let c_program = Parser::from(tokens).parse();
+        println!("[compiler driver] Abstract syntax tree:\n{c_program:#?}");
+        c_program
     }
 
-    fn codegen(&self) {
+    fn codegen(&self, c_program: CProgram) {
         println!("[compiler driver] --- Stage: CODEGEN ---");
-        todo!("--codegen option");
+        let asm_program = Generator::from(c_program).gen();
+        println!("[compiler driver] Generated assembly program:\n{asm_program:#?}");
     }
 
     fn emit_assembly(&self) {
@@ -116,20 +119,27 @@ impl CompilerDriver {
             }
         };
 
-        if self.option >= CompilerDriverOption::Parse {
-            self.parse(lexer.tokens());
+        if self.option < CompilerDriverOption::Parse {
+            return;
         }
-        if self.option >= CompilerDriverOption::Codegen {
-            self.codegen();
+        let c_progrem = self.parse(lexer.tokens());
+
+        if self.option < CompilerDriverOption::Codegen {
+            return;
         }
-        if self.option >= CompilerDriverOption::EmitAssembly {
-            self.emit_assembly();
+        self.codegen(c_progrem);
+
+        if self.option < CompilerDriverOption::EmitAssembly {
+            return;
         }
-        if self.option >= CompilerDriverOption::All {
-            if let Err(e) = self.assemble_and_link() {
-                eprintln!("[compiler driver] Assemble and link failed: {e}");
-                exit(1);
-            }
+        self.emit_assembly();
+
+        if self.option < CompilerDriverOption::All {
+            return;
+        }
+        if let Err(e) = self.assemble_and_link() {
+            eprintln!("[compiler driver] Assemble and link failed: {e}");
+            exit(1);
         }
     }
 }

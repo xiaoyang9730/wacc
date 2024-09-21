@@ -3,6 +3,8 @@ use compiler_driver::CompilerDriver;
 
 mod lexer;
 mod parser;
+mod ast_nodes;
+mod codegen;
 
 use std::env;
 
