@@ -3,9 +3,8 @@ use std::fs::File;
 use std::io::{self, Read};
 use std::process::{Command, exit};
 
-use crate::lexer::Lexer;
-
-use crate::parser::parse_program;
+use crate::lexer::{Lexer, Tokens};
+use crate::parser::Parser;
 
 #[derive(Debug, Default, PartialEq, PartialOrd)]
 enum CompilerDriverOption {
@@ -80,21 +79,22 @@ impl CompilerDriver {
         Ok(lexer)
     }
 
-    fn parse(&self, lexer: Lexer) {
+    fn parse(&self, tokens: Tokens) {
         println!("[compiler driver] --- Stage: PARSE ---");
 
-        let program = parse_program(&mut lexer.tokens());
+        let program = Parser::from(tokens).parse();
         println!("[compiler driver] Abstract syntax tree:\n{program:#?}");
+        // unimplemented!("--parse option")
     }
 
     fn codegen(&self) {
         println!("[compiler driver] --- Stage: CODEGEN ---");
-        unimplemented!("--codegen option");
+        todo!("--codegen option");
     }
 
     fn emit_assembly(&self) {
         println!("[compiler driver] --- Stage: EMIT ASSEMBLY ---");
-        unimplemented!("-S option");
+        todo!("-S option");
     }
 
     fn assemble_and_link(&self) -> io::Result<()> {
@@ -117,7 +117,7 @@ impl CompilerDriver {
         };
 
         if self.option >= CompilerDriverOption::Parse {
-            self.parse(lexer);
+            self.parse(lexer.tokens());
         }
         if self.option >= CompilerDriverOption::Codegen {
             self.codegen();

@@ -1,74 +1,103 @@
 use std::process::exit;
 use crate::lexer::{Token, Tokens};
 
-// TODO: Try to use struct to construct AST
-#[allow(unused)]
 #[derive(Debug)]
-pub enum AstNode {
-    Program(Box<AstNode>),
-    Function((String, Box<AstNode>)),
-    Return(Box<AstNode>),
-    Constant(u32),
+pub enum Program {
+    #[allow(unused)]
+    Program(FunctionDefinition),
 }
 
-fn expect(expected: Token, tokens: &mut Tokens) {
-    let Some(actual) = tokens.next() else {
-        eprintln!("[parser] Expect `{expected}` but no tokens left");
-        exit(1);
-    };
-    if actual != expected {
-        eprintln!("[parser] Expect `{expected}`, found {actual}");
-        exit(1);
+#[derive(Debug)]
+pub enum FunctionDefinition {
+    #[allow(unused)]
+    Function(Identifier, Statement),
+}
+
+#[derive(Debug)]
+pub enum Identifier {
+    #[allow(unused)]
+    Identifier(String),
+}
+
+#[derive(Debug)]
+pub enum Statement {
+    #[allow(unused)]
+    Return(Expression),
+}
+
+#[derive(Debug)]
+pub enum Expression {
+    #[allow(unused)]
+    Constant(u32)
+}
+
+pub struct Parser<'a> {
+    tokens: Tokens<'a>,
+}
+
+impl<'a> From<Tokens<'a>> for Parser<'a> {
+    fn from(tokens: Tokens<'a>) -> Self {
+        Self { tokens }
     }
 }
 
-pub fn parse_program(tokens: &mut Tokens) -> AstNode {
-    let function_definition = Box::new(parse_function_definition(tokens));
-    if tokens.next().is_some() {
-        eprintln!("[parser] Expect no tokens after function");
-        exit(1);
+impl<'a> Parser<'a> {
+    pub fn parse(&mut self) -> Program {
+        self.parse_program()
     }
-    AstNode::Program(function_definition)
-}
 
-fn parse_function_definition(tokens: &mut Tokens) -> AstNode {
-    expect(Token::from("int"), tokens);
-    // identifier
-    let name = parse_identifier(tokens).unwrap_or_else(|| {
-        eprintln!("[parser] Expected an identifier for function name");
-        exit(1);
-    });
-    expect(Token::from("("), tokens);
-    expect(Token::from("void"), tokens);
-    expect(Token::from(")"), tokens);
-    expect(Token::from("{"), tokens);
-    // statement
-    let body = Box::new(parse_statement(tokens));
-    expect(Token::from("}"), tokens);
-    AstNode::Function((name, body))
-}
+    fn expect_next(&mut self, expected: Token) {
+        let Some(actual) = self.tokens.next() else {
+            eprintln!("[parser] Expect `{expected}` but no tokens left");
+            exit(1);
+        };
+        if actual != expected {
+            eprintln!("[parser] Expect `{expected}`, found {actual}");
+            exit(1);
+        }
+    }
 
-fn parse_identifier(tokens: &mut Tokens) -> Option<String> {
-    let Some(Token::Identifier(identifier)) = tokens.next() else {
-        eprintln!("[parser] No tokens left when parsing identifier");
-        exit(1);
-    };
-    // TODO: Try to use &str here
-    Some(String::from(identifier))
-}
+    fn parse_program(&mut self) -> Program {
+        let function_definition = self.parse_function_definition();
+        if self.tokens.next().is_some() {
+            eprintln!("[parser] Expect no tokens after function");
+            exit(1);
+        }
+        Program::Program(function_definition)
+    }
 
-fn parse_statement(tokens: &mut Tokens) -> AstNode {
-    expect(Token::from("return"), tokens);
-    // expression
-    let expression = Box::new(parse_expression(tokens));
-    expect(Token::from(";"), tokens);
-    AstNode::Return(expression)
-}
+    fn parse_function_definition(&mut self) -> FunctionDefinition {
+        self.expect_next(Token::from("int"));
+        let name = self.parse_identifier();
+        self.expect_next(Token::from("("));
+        self.expect_next(Token::from("void"));
+        self.expect_next(Token::from(")"));
+        self.expect_next(Token::from("{"));
+        let statement = self.parse_statement();
+        self.expect_next(Token::from("}"));
+        FunctionDefinition::Function(name, statement)
+    }
 
-fn parse_expression(tokens: &mut Tokens) -> AstNode {
-    let Some(Token::Constant(integer)) = tokens.next() else {
-        eprintln!("[parser] No tokens left when parsing expression");
-        exit(1);
-    };
-    AstNode::Constant(integer)
+    fn parse_identifier(&mut self) -> Identifier {
+        let Some(Token::Identifier(identifier)) = self.tokens.next() else {
+            eprintln!("[parser] No tokens left when parsing identifier");
+            exit(1);
+        };
+        Identifier::Identifier(identifier.to_string())
+    }
+
+    fn parse_statement(&mut self) -> Statement {
+        self.expect_next(Token::from("return"));
+        let expression = self.parse_exxpression();
+        self.expect_next(Token::from(";"));
+        Statement::Return(expression)
+    }
+
+    fn parse_exxpression(&mut self) -> Expression {
+        let Some(Token::Constant(integer)) = self.tokens.next() else {
+            eprintln!("[parser] No tokens left when parsing expression");
+            exit(1);
+        };
+        Expression::Constant(integer)
+    }
 }
