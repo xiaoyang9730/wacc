@@ -1,5 +1,4 @@
 use std::fmt;
-use std::process::exit;
 
 use Keyword::*;
 use TokenCheckResult::*;
@@ -61,8 +60,7 @@ impl<'a> Iterator for Tokens<'a> {
                 return Some(Token::from(token_str));
             },
             Err(len) => {
-                eprintln!("[lexer] Invalid token `{}`", &self.src[..len]);
-                exit(1);
+                return Some(Token::Invalid(&self.src[..=len]));
             },
         }
     }
@@ -129,6 +127,7 @@ enum TokenCheckResult {
 
 #[derive(PartialEq, Eq)]
 pub enum Token<'a> {
+    Invalid(&'a str),
     Keyword(Keyword),
     Identifier(&'a str),
     Constant(u32),
@@ -163,6 +162,7 @@ impl<'a> From<&'a str> for Token<'a> {
 impl<'a> fmt::Display for Token<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Invalid(token) => f.write_fmt(format_args!("INVALID TOKEN: `{token}`")),
             Self::Keyword(kw) => f.write_str(&kw.to_string()),
             Self::Identifier(identifier) => f.write_str(identifier),
             Self::Constant(integer) => f.write_fmt(format_args!("{integer}")),

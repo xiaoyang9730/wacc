@@ -1,16 +1,17 @@
-use std::env::Args;
 use std::fs::File;
-use std::io::{self, Read, Write};
-use std::process::{Command, exit};
+use std::io::{Read, Write};
+use std::process::Command;
 
-use crate::lexer::{Lexer, Tokens};
+use crate::lexer::{Lexer, Token, Tokens};
 use crate::parser::Parser;
 use crate::ast_nodes::{CProgram, AsmProgram};
 use crate::codegen::Generator;
 use crate::emit::emit_asm_program;
 
+use CompilerDriverOption::*;
+
 #[derive(Debug, Default, PartialEq, PartialOrd)]
-enum CompilerDriverOption {
+pub enum CompilerDriverOption {
     Lex = 0,
     Parse = 1,
     Codegen = 2,
@@ -26,31 +27,12 @@ pub struct CompilerDriver {
 }
 
 impl CompilerDriver {
-    pub fn config(args: Args) -> Self {
-        let mut cd = Self::default();
-        for arg in args.skip(1) {
-            match arg.as_str() {
-                "--lex" => cd.option = CompilerDriverOption::Lex,
-                "--parse" => cd.option = CompilerDriverOption::Parse,
-                "--codegen" => cd.option = CompilerDriverOption::Codegen,
-                "-S" => cd.option = CompilerDriverOption::EmitAssembly,
-                option => if option.starts_with('-') {
-                    eprintln!("[compiler driver] unsupported option `{option}`");
-                    exit(1);
-                } else {
-                    cd.filename = String::from(option);
-                },
-            }
-        }
-        if cd.filename.len() == 0 {
-            eprintln!("[compiler driver] no input files");
-            exit(1);
-        } else if !cd.filename.ends_with(".c") {
-            eprintln!("[compiler driver] `{}` is not a .c file", cd.filename);
-            exit(1);
-        }
-        println!("[compiler driver] {cd:#?}");
-        cd
+    pub fn set_option(&mut self, option: CompilerDriverOption) {
+        self.option = option;
+    }
+
+    pub fn set_filename(&mut self, filename: &str) {
+        self.filename = filename.into();
     }
 
     fn filename_preprocessed(&self) -> String {
@@ -65,111 +47,105 @@ impl CompilerDriver {
         format!("{}", &self.filename[..self.filename.len()-2])
     }
 
-    fn preprocess(&self) -> io::Result<()> {
-        println!("[compiler driver] --- Stage: PREPROCESS ---");
+    fn preprocess(&self) -> Result<(), String> {
+        println!("--- Stage: PREPROCESS ---");
         gcc(&["-E", "-P", &self.filename, "-o", &self.filename_preprocessed()])
     }
 
-    fn lex(&self) -> io::Result<Lexer> {
-        println!("[compiler driver] --- Stage: LEX ---");
+    fn lex(&self) -> Result<Lexer, String> {
+        println!("--- Stage: LEX ---");
 
         let mut lexer = Lexer::default();
-        File::open(self.filename_preprocessed())?
-            .read_to_string(lexer.get_src_mut())?;
+        File::open(self.filename_preprocessed())
+            .map_err(|e| format!("Failed to open {}: {e}", self.filename_preprocessed()))?
+            .read_to_string(lexer.get_src_mut())
+            .map_err(|e| format!("Failed to read preprocessed file: {e}"))?;
+
         for token in lexer.tokens() {
-            println!("[compiler driver] token: {token}");
+            if let Token::Invalid(token) = token {
+                return Err(format!("Encountered invalid token: `{token}`"));
+            }
+            println!("token: {token}");
         }
         Ok(lexer)
     }
 
-    fn parse(&self, tokens: Tokens) -> CProgram {
-        println!("[compiler driver] --- Stage: PARSE ---");
-
-        let c_program = Parser::from(tokens).parse();
-        println!("[compiler driver] Abstract syntax tree:\n{c_program:#?}");
-        c_program
+    fn parse(&self, tokens: Tokens) -> Result<CProgram, String> {
+        println!("--- Stage: PARSE ---");
+        let c_program = Parser::from(tokens).parse()?;
+        println!("Abstract syntax tree:\n{c_program:#?}");
+        Ok(c_program)
     }
 
     fn codegen(&self, c_program: CProgram) -> AsmProgram {
-        println!("[compiler driver] --- Stage: CODEGEN ---");
+        println!("--- Stage: CODEGEN ---");
         let asm_program = Generator::from(c_program).gen();
-        println!("[compiler driver] Generated assembly program:\n{asm_program:#?}");
+        println!("Generated assembly program:\n{asm_program:#?}");
         asm_program
     }
 
-    fn emit_assembly(&self, asm_program: AsmProgram) -> io::Result<()> {
-        println!("[compiler driver] --- Stage: EMIT ASSEMBLY ---");
+    fn emit_assembly(&self, asm_program: AsmProgram) -> Result<(), String> {
+        println!("--- Stage: EMIT ASSEMBLY ---");
         let asm_code = emit_asm_program(asm_program);
-        println!("[compiler driver] Emit assembly code:\n{asm_code}");
+        println!("Emit assembly code:\n{asm_code}");
 
-        let mut asm_file = File::create(self.filename_assembly())?;
-        writeln!(asm_file, "{asm_code}")?;
-        Ok(())
+        let mut asm_file = File::create(self.filename_assembly())
+            .map_err(|e| format!("Failed to create file `{}`: {e}", self.filename_assembly()))?;
+        writeln!(asm_file, "{asm_code}")
+            .map_err(|e| format!("Failed to write assembly code to `{}`: {e}", self.filename_assembly()))
     }
 
-    fn assemble_and_link(&self) -> io::Result<()> {
-        println!("[compiler driver] --- Stage: ASSEMBLE & LINK ---");
+    fn assemble_and_link(&self) -> Result<(), String> {
+        println!("--- Stage: ASSEMBLE & LINK ---");
         gcc(&[&self.filename_assembly(), "-o", &self.filename_output()])
     }
 
-    pub fn run(&self) {
-        if let Err(e) = self.preprocess() {
-            eprintln!("[compiler driver] Preprocess failed: {e}");
-            exit(1);
+    pub fn run(&mut self) -> Result<(), String> {
+        if self.filename.is_empty() {
+            return Err("No input file".into());
         }
-
-        let lexer = match self.lex() {
-            Ok(lexer) => lexer,
-            Err(e) => {
-                eprintln!("[compiler driver] Lex failed: {e}");
-                exit(1);
-            }
-        };
-
-        if self.option < CompilerDriverOption::Parse {
-            return;
+        if !self.filename.ends_with(".c") {
+            return Err(format!("Filename `{}` should end with \".c\"", self.filename));
         }
-        let c_program = self.parse(lexer.tokens());
+        println!("{self:#?}");
 
-        if self.option < CompilerDriverOption::Codegen {
-            return;
-        }
+        if self.option < Lex { return Ok(()) }
+        self.preprocess()
+            .map_err(|e| format!("`Preprocess` stage failed: {e}"))?;
+        let lexer = self.lex()
+            .map_err(|e| format!("`Lex` stage failed: {e}"))?;
+
+        if self.option < Parse { return Ok(()) }
+        let c_program = self.parse(lexer.tokens())
+            .map_err(|e| format!("`Parse` stage failed: {e}"))?;
+
+        if self.option < Codegen { return Ok(()) }
         let asm_program = self.codegen(c_program);
 
-        if self.option < CompilerDriverOption::EmitAssembly {
-            return;
-        }
-        if let Err(e) = self.emit_assembly(asm_program) {
-            eprintln!("[compiler driver] Failed to write assembly code to `{}`: {e}", self.filename_assembly());
-            exit(1);
-        }
+        if self.option < EmitAssembly { return Ok(()) }
+        self.emit_assembly(asm_program)
+            .map_err(|e| format!("`Emit assembly` stage failed: {e}"))?;
 
-        if self.option < CompilerDriverOption::All {
-            return;
-        }
-        if let Err(e) = self.assemble_and_link() {
-            eprintln!("[compiler driver] Assemble and link failed: {e}");
-            exit(1);
-        }
+        if self.option < All { return Ok(()) }
+        self.assemble_and_link()
+            .map_err(|e| format!("`Assemble and link` stage failed: {e}"))
     }
 }
 
-fn gcc(options: &[&str]) -> io::Result<()> {
-    print!("[compiler driver] gcc");
-    options.iter().for_each(|op| print!(" {op}"));
-    println!("");
+fn gcc(options: &[&str]) -> Result<(), String> {
+    println!("gcc{}", options.iter().map(|op| format!(" {op}")).collect::<String>());
 
-    let output = Command::new("gcc").args(options).output()?;
-    if output.stdout.len() > 0 {
-        println!("--- stdout ---\n{}", String::from_utf8(output.stdout).expect("That GCC stdout should be UTF-8"));
+    let output = Command::new("gcc").args(options).output()
+        .map_err(|e| format!("Failed to execute gcc process: {e}"))?;
+
+    if !output.stdout.is_empty() {
+        println!("{}", String::from_utf8(output.stdout).unwrap_or("GCC stdout isn't UTF-8".into()));
     }
-    if output.stderr.len() > 0 {
-        eprintln!("--- stderr ---\n{}", String::from_utf8(output.stderr).expect("That GCC stderr should be UTF-8"));
+    if !output.stderr.is_empty() {
+        eprintln!("{}", String::from_utf8(output.stderr).unwrap_or("GCC stderr isn't UTF-8".into()));
     }
     if !output.status.success() {
-        eprintln!("[compiler driver] GCC command failed with exit code: {:?}", output.status.code());
-        exit(1);
+        return Err(format!("GCC command failed{}", output.status.code().map(|c| format!(" with code: {c}")).unwrap_or_default()));
     }
-
     Ok(())
 }
