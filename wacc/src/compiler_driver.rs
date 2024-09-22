@@ -66,6 +66,8 @@ impl CompilerDriver {
             .map_err(|e| format!("Failed to open {}: {e}", self.filename_preprocessed()))?
             .read_to_string(lexer.get_src_mut())
             .map_err(|e| format!("Failed to read preprocessed file: {e}"))?;
+        Command::new("rm").arg(&self.filename_preprocessed()).status()
+            .map_err(|e| format!("Failed to delete `{}`: {e}", self.filename_preprocessed()))?;
 
         for token in lexer.tokens() {
             if let Token::Invalid(token) = token {
@@ -103,7 +105,9 @@ impl CompilerDriver {
 
     fn assemble_and_link(&self) -> Result<(), String> {
         println!("--- Stage: ASSEMBLE & LINK ---");
-        gcc(&[&self.filename_assembly(), "-o", &self.filename_output()])
+        gcc(&[&self.filename_assembly(), "-o", &self.filename_output()])?;
+        Command::new("rm").arg(&self.filename_assembly()).status().map(|_| {})
+            .map_err(|e| format!("Failed to delete `{}`: {e}", self.filename_assembly()))
     }
 
     pub fn run(&mut self) -> Result<(), String> {
