@@ -12,12 +12,13 @@ use CompilerDriverOption::*;
 
 #[derive(Debug, Default, PartialEq, PartialOrd)]
 pub enum CompilerDriverOption {
-    Lex = 0,
-    Parse = 1,
-    Codegen = 2,
-    EmitAssembly = 3,
+    EmitReferenceAssembly = 0,
+    Lex = 1,
+    Parse = 2,
+    Codegen = 3,
+    EmitAssembly = 4,
     #[default]
-    All = 4,
+    All = 5,
 }
 
 #[derive(Debug, Default)]
@@ -45,6 +46,11 @@ impl CompilerDriver {
 
     fn filename_output(&self) -> String {
         format!("{}", &self.filename[..self.filename.len()-2])
+    }
+
+    fn emit_reference_assembly(&self) -> Result<(), String> {
+        println!("--- Stage: EMIT REFERENCE ASSEMBLY ---");
+        gcc(&["-S", "-O", "-fno-asynchronous-unwind-tables", "-fcf-protection=none", &self.filename, "-o", &self.filename_assembly()])
     }
 
     fn preprocess(&self) -> Result<(), String> {
@@ -108,6 +114,11 @@ impl CompilerDriver {
             return Err(format!("Filename `{}` should end with \".c\"", self.filename));
         }
         println!("{self:#?}");
+
+        if self.option == EmitReferenceAssembly {
+            self.emit_reference_assembly()
+                .map_err(|e| format!("`Emit Referenct Assembly` stage failed: {e}"))?;
+        }
 
         if self.option < Lex { return Ok(()) }
         self.preprocess()
