@@ -15,11 +15,11 @@ fn main() {
 
     for arg in args().skip(1) {
         match arg.as_str() {
-            "-Sref" => compiler_driver.set_option(EmitReferenceAssembly),
-            "--lex" => compiler_driver.set_option(Lex),
-            "--parse" => compiler_driver.set_option(Parse),
+            "-Sref"     => compiler_driver.set_option(EmitReferenceAssembly),
+            "--lex"     => compiler_driver.set_option(Lex),
+            "--parse"   => compiler_driver.set_option(Parse),
             "--codegen" => compiler_driver.set_option(Codegen),
-            "-S" => compiler_driver.set_option(EmitAssembly),
+            "-S"        => compiler_driver.set_option(EmitAssembly),
             option => {
                 if option.starts_with('-') {
                     eprintln!("Invalid option `{option}`");

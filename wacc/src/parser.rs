@@ -16,12 +16,12 @@ impl<'a> Parser<'a> {
         self.parse_program()
     }
 
+    // TODO: parse_identifier() and parse_expression() have similar code structure
     fn expect_next(&mut self, expected: Token) -> Result<(), String> {
-        let Some(actual) = self.tokens.next() else {
-            return Err(format!("Expect `{expected}` but no tokens left"));
-        };
-        if actual != expected {
-            return Err(format!("Expect `{expected}`, found `{actual}`"));
+        let next_token = self.tokens.next()
+            .unwrap_or(Err(format!("Expect `{expected}` but no tokens left")))?;
+        if next_token != expected {
+            return Err(format!("Expect `{expected}`, found `{next_token}`"));
         }
         Ok(())
     }
@@ -46,23 +46,29 @@ impl<'a> Parser<'a> {
         Ok(c::Function(name, statement))
     }
 
+    // TODO: similar code structure with expect_next
     fn parse_identifier(&mut self) -> Result<CIdentifier, String> {
-        let Some(Token::Identifier(identifier)) = self.tokens.next() else {
-            return Err("No tokens left when parsing identifier".into());
+        let next_token = self.tokens.next()
+            .unwrap_or(Err("Expect an identifier but no tokens left".into()))?;
+        let Token::Identifier(identifier) = next_token else {
+            return Err(format!("Expect an identifier, found `{next_token}`"));
         };
         Ok(c::Identifier(identifier.to_string()))
     }
 
     fn parse_statement(&mut self) -> Result<CStatement, String> {
         self.expect_next(Token::from("return"))?;
-        let expression = self.parse_exxpression()?;
+        let expression = self.parse_expression()?;
         self.expect_next(Token::from(";"))?;
         Ok(c::Return(expression))
     }
 
-    fn parse_exxpression(&mut self) -> Result<CExpression, String> {
-        let Some(Token::Constant(integer)) = self.tokens.next() else {
-            return Err("No tokens left when parsing expression".into());
+    // TODO: similar code structure with expect_next
+    fn parse_expression(&mut self) -> Result<CExpression, String> {
+        let next_token = self.tokens.next()
+            .unwrap_or(Err("Expect an expression but no tokens left".into()))?;
+        let Token::Constant(integer) = next_token else {
+            return Err(format!("Expect an integer, found `{next_token}`"));
         };
         Ok(c::Constant(integer))
     }

@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::process::Command;
 
-use crate::lexer::{Lexer, Token, Tokens};
+use crate::lexer::{Lexer, Tokens};
 use crate::parser::Parser;
 use crate::ast_nodes::{CProgram, AsmProgram};
 use crate::codegen::Generator;
@@ -21,7 +21,7 @@ pub enum CompilerDriverOption {
     All = 5,
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct CompilerDriver {
     option: CompilerDriverOption,
     filename: String,
@@ -48,6 +48,18 @@ impl CompilerDriver {
         format!("{}", &self.filename[..self.filename.len()-2])
     }
 
+    fn check_config(&self) -> Result<(), String> {
+        println!("Option: {:?}", self.option);
+        println!("Filename: `{}`", self.filename);
+        if self.filename.is_empty() {
+            return Err("No input file".into());
+        }
+        if !self.filename.ends_with(".c") {
+            return Err(format!("Filename `{}` should end with \".c\"", self.filename));
+        }
+        Ok(())
+    }
+
     fn emit_reference_assembly(&self) -> Result<(), String> {
         println!("--- Stage: EMIT REFERENCE ASSEMBLY ---");
         gcc(&["-S", "-O", "-fno-asynchronous-unwind-tables", "-fcf-protection=none", &self.filename, "-o", &self.filename_assembly()])
@@ -70,10 +82,7 @@ impl CompilerDriver {
             .map_err(|e| format!("Failed to delete `{}`: {e}", self.filename_preprocessed()))?;
 
         for token in lexer.tokens() {
-            if let Token::Invalid(token) = token {
-                return Err(format!("Encountered invalid token: `{token}`"));
-            }
-            println!("token: {token}");
+            println!("token: {}", token?);
         }
         Ok(lexer)
     }
@@ -111,13 +120,7 @@ impl CompilerDriver {
     }
 
     pub fn run(&mut self) -> Result<(), String> {
-        if self.filename.is_empty() {
-            return Err("No input file".into());
-        }
-        if !self.filename.ends_with(".c") {
-            return Err(format!("Filename `{}` should end with \".c\"", self.filename));
-        }
-        println!("{self:#?}");
+        self.check_config()?;
 
         if self.option == EmitReferenceAssembly {
             self.emit_reference_assembly()
