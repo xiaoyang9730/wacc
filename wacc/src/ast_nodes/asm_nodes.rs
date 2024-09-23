@@ -1,4 +1,4 @@
-pub(super) mod variants {
+pub mod ast_node_variants {
     pub use super::AsmProgram::*;
     pub use super::AsmFunctionDefinition::*;
     pub use super::AsmIdentifier::*;

@@ -1,4 +1,4 @@
-pub(super) mod variants {
+pub mod ast_node_variants {
     pub use super::CProgram::*;
     pub use super::CFunctionDefinition::*;
     pub use super::CIdentifier::*;
