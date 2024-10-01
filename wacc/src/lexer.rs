@@ -1,8 +1,8 @@
 use std::fmt;
 
 use Keyword::*;
-use TokenCheckResult::*;
-use TokenCheckerType::*;
+use TokenSyntaxCheckResult::*;
+use TokenSyntaxCheckerType::*;
 
 #[derive(Default)]
 pub struct Lexer {
@@ -32,11 +32,11 @@ impl<'a> Tokens<'a> {
     }
 
     fn next_token_len(&self) -> Result<usize, usize> {
-        let mut checker = TokenChecker::default();
-        for (i, ch) in self.src.char_indices().peekable() {
-            match checker.check(ch) {
-                EndChar => { return Ok(i); },
-                InvalidChar => { return Err(i); },
+        let mut tsc = TokenSyntaxChecker::default();
+        for (i, ch) in self.src.char_indices() {
+            match tsc.check(ch) {
+                TokenEnd => { return Ok(i); },
+                TokenInvalid => { return Err(i); },
                 _ => {},
             }
         }
@@ -67,62 +67,76 @@ impl<'a> Iterator for Tokens<'a> {
 }
 
 #[derive(Default)]
-struct TokenChecker {
-    type_: Option<TokenCheckerType>,
+struct TokenSyntaxChecker {
+    type_: Option<TokenSyntaxCheckerType>,
+    len: usize,
 }
 
-impl TokenChecker {
-    fn check(&mut self, ch: char) -> TokenCheckResult {
+impl TokenSyntaxChecker {
+    fn check(&mut self, ch: char) -> TokenSyntaxCheckResult {
+        self.len += 1;
+
         // First character
         let Some(type_) = &self.type_ else {
             self.type_ = {
-                if ch == '(' || ch == ')' || ch == '{' || ch == '}' || ch == ';' {
-                    Some(StartWithSymbol)
+                if ch == '(' || ch == ')' || ch == '{' || ch == '}' || ch == ';' || ch == '~' || ch == '-' {
+                    Some(StartWithSymbol(ch))
                 } else if ch.is_ascii_digit() {
                     Some(StartWithDigit)
                 } else if ch.is_ascii_alphabetic() || ch == '_' {
                     Some(StartWithAlphabetic)
                 } else {
-                    return InvalidChar;
+                    return TokenInvalid;
                 }
             };
-            return AcceptableChar;
+            return TokenAcceptable;
         };
 
         // Following characters
         match type_ {
-            StartWithSymbol => {
-                return EndChar;
+            StartWithSymbol(start_symbol) => {
+                match start_symbol {
+                    '-' => {
+                        if ch == '-' && self.len == 2 {
+                            return TokenAcceptable;
+                        } else {
+                            return TokenEnd;
+                        }
+                    },
+                    _ => {
+                        return TokenEnd;
+                    },
+                }
             },
             StartWithDigit => {
                 if ch.is_ascii_digit() {
-                    return AcceptableChar;
+                    return TokenAcceptable;
                 }
                 if ch.is_ascii_alphabetic() || ch == '_' {
-                    return InvalidChar;
+                    return TokenInvalid;
                 }
-                return EndChar;
+                return TokenEnd;
             },
             StartWithAlphabetic => {
                 if ch.is_ascii_alphanumeric() || ch == '_' {
-                    return AcceptableChar;
+                    return TokenAcceptable;
                 }
-                return EndChar;
+                return TokenEnd;
             },
         }
     }
 }
 
-enum TokenCheckerType {
+enum TokenSyntaxCheckerType {
+    StartWithSymbol(char),
     StartWithDigit,
     StartWithAlphabetic,
-    StartWithSymbol,
 }
 
-enum TokenCheckResult {
-    AcceptableChar,
-    EndChar,
-    InvalidChar,
+enum TokenSyntaxCheckResult {
+    TokenAcceptable,
+    TokenEnd,
+    TokenInvalid,
 }
 
 #[derive(PartialEq, Eq)]

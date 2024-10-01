@@ -54,8 +54,17 @@ fn chapter_1() {
     assert!(output.ends_with("OK\n"));
 }
 
+fn chapter_2() {
+    println!("--- CH 2: Unary Operators ---");
+    println!("[LEX]");
+    let output = test_compiler(&[WACC, "--chapter", "2", "--stage", "lex"], Stderr);
+    println!("{output}");
+    assert!(output.ends_with("OK\n"));
+}
+
 #[test]
 fn all() {
     check_setup();
     chapter_1();
+    chapter_2();
 }
