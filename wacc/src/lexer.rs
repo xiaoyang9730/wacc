@@ -33,10 +33,10 @@ impl<'a> Tokens<'a> {
 
     fn next_token_len(&self) -> Result<usize, usize> {
         let mut tsc = TokenSyntaxChecker::default();
-        for (i, ch) in self.src.char_indices() {
+        for ch in self.src.chars() {
             match tsc.check(ch) {
-                TokenEnd => { return Ok(i); },
-                TokenInvalid => { return Err(i); },
+                TokenEnd => { return Ok(tsc.len as _); },
+                TokenInvalid => { return Err(tsc.len as _); },
                 _ => {},
             }
         }
@@ -66,10 +66,9 @@ impl<'a> Iterator for Tokens<'a> {
     }
 }
 
-#[derive(Default)]
 struct TokenSyntaxChecker {
     type_: Option<TokenSyntaxCheckerType>,
-    len: usize,
+    len: isize,
 }
 
 impl TokenSyntaxChecker {
@@ -97,7 +96,7 @@ impl TokenSyntaxChecker {
             StartWithSymbol(start_symbol) => {
                 match start_symbol {
                     '-' => {
-                        if ch == '-' && self.len == 2 {
+                        if self.len == 1 && ch == '-' {
                             return TokenAcceptable;
                         } else {
                             return TokenEnd;
@@ -124,6 +123,12 @@ impl TokenSyntaxChecker {
                 return TokenEnd;
             },
         }
+    }
+}
+
+impl Default for TokenSyntaxChecker {
+    fn default() -> Self {
+        Self { type_: None, len: -1 }
     }
 }
 
