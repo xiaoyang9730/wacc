@@ -27,7 +27,8 @@ fn test_compiler(args: &[&str], get_output: OutputType) -> (bool, String) {
 }
 
 fn check_setup() {
-    println!("--- CH 0: CHECK SETUP ---");
+    println!("=== CH 0: CHECK SETUP ===\n");
+
     let (success, output) = test_compiler(&["--check-setup"], Stdout);
     println!("{output}");
     assert_eq!(output, "All system requirements met!\n");
@@ -35,7 +36,8 @@ fn check_setup() {
 }
 
 fn chapter_1() {
-    println!("--- CH 1: A MINIMAL COMPILER ---");
+    println!("=== CH 1: A MINIMAL COMPILER ===\n");
+
     println!("[LEX]");
     let (success, output) = test_compiler(&[WACC, "--chapter", "1", "--stage", "lex"], Stderr);
     println!("{output}");
@@ -62,9 +64,16 @@ fn chapter_1() {
 }
 
 fn chapter_2() {
-    println!("--- CH 2: Unary Operators ---");
+    println!("=== CH 2: Unary Operators ===\n");
+
     println!("[LEX]");
     let (success, output) = test_compiler(&[WACC, "--chapter", "2", "--stage", "lex"], Stderr);
+    println!("{output}");
+    assert!(output.ends_with("OK\n"));
+    assert!(success);
+
+    println!("[PARSE]");
+    let (success, output) = test_compiler(&[WACC, "--chapter", "2", "--stage", "parse"], Stderr);
     println!("{output}");
     assert!(output.ends_with("OK\n"));
     assert!(success);

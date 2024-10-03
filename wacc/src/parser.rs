@@ -67,9 +67,26 @@ impl<'a> Parser<'a> {
     fn parse_expression(&mut self) -> Result<CExpression, String> {
         let next_token = self.tokens.next()
             .unwrap_or(Err("Expect an expression but no tokens left".into()))?;
-        let Token::Constant(integer) = next_token else {
-            return Err(format!("Expect an integer, found `{next_token}`"));
-        };
-        Ok(c::Constant(integer))
+        match next_token {
+            Token::Constant(integer) => {
+                Ok(c::Constant(integer))
+            },
+            Token::Complement => {
+                let inner_expression = Box::new(self.parse_expression()?);
+                Ok(c::UnaryOperation(c::Complement, inner_expression))
+            },
+            Token::Negate => {
+                let inner_expression = Box::new(self.parse_expression()?);
+                Ok(c::UnaryOperation(c::Negate, inner_expression))
+            },
+            Token::OpenParenthesis => {
+                let inner_expression = self.parse_expression()?;
+                self.expect_next(Token::from(")"))?;
+                Ok(inner_expression)
+            },
+            _ => {
+                Err(format!("Malformed expression: `{next_token}`"))
+            },
+        }
     }
 }

@@ -4,6 +4,7 @@ pub mod ast_node_variants {
     pub use super::CIdentifier::*;
     pub use super::CStatement::*;
     pub use super::CExpression::*;
+    pub use super::CUnaryOperator::*;
 }
 
 #[derive(Debug)]
@@ -26,7 +27,15 @@ pub enum CStatement {
     Return(CExpression),
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum CExpression {
-    Constant(u32)
+    Constant(u32),
+    UnaryOperation(CUnaryOperator, Box<CExpression>),
+}
+
+#[derive(Debug)]
+pub enum CUnaryOperator {
+    Complement,
+    Negate,
 }

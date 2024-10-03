@@ -45,6 +45,9 @@ fn gen_statement(c_statement: &CStatement) -> Vec<AsmInstruction> {
 }
 
 fn gen_expression(c_expression: &CExpression) -> AsmOperand {
-    let &c::Constant(integer) = c_expression;
-    asm::Imm(integer)
+    if let &c::Constant(integer) = c_expression {
+        asm::Imm(integer)
+    } else {
+        todo!()
+    }
 }

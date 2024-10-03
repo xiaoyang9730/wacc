@@ -154,6 +154,9 @@ pub enum Token<'a> {
     CloseParenthesis,
     OpenBrace,
     CloseBrace,
+    Complement,
+    Negate,
+    Decrement,
 }
 
 impl<'a> From<&'a str> for Token<'a> {
@@ -164,6 +167,9 @@ impl<'a> From<&'a str> for Token<'a> {
             "{" => Self::OpenBrace,
             "}" => Self::CloseBrace,
             ";" => Self::Semicolon,
+            "~" => Self::Complement,
+            "-" => Self::Negate,
+            "--" => Self::Decrement,
             value => {
                 if let Ok(integer) = value.parse::<u32>() {
                     return Self::Constant(integer);
@@ -188,6 +194,9 @@ impl<'a> fmt::Display for Token<'a> {
             Self::CloseParenthesis => f.write_str(")"),
             Self::OpenBrace => f.write_str("{"),
             Self::CloseBrace => f.write_str("}"),
+            Self::Complement => f.write_str("~"),
+            Self::Negate => f.write_str("-"),
+            Self::Decrement => f.write_str("--"),
         }
     }
 }
