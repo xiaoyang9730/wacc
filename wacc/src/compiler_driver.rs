@@ -6,7 +6,7 @@ use crate::lexer::{Lexer, Tokens};
 use crate::parser::Parser;
 use crate::ast_nodes::{AsmProgram, CProgram, TackyProgram};
 use crate::tackygen::gen_tacky_program;
-use crate::codegen::Generator;
+use crate::codegen::gen_asm_program;
 use crate::emit::emit_asm_program;
 
 use CompilerDriverOption::*;
@@ -103,9 +103,9 @@ impl CompilerDriver {
         tacky
     }
 
-    fn codegen(&self, c_program: CProgram) -> AsmProgram {
+    fn codegen(&self, tacky_program: TackyProgram) -> AsmProgram {
         println!("--- Stage: CODEGEN ---");
-        let asm_program = Generator::from(c_program).gen();
+        let asm_program = gen_asm_program(tacky_program);
         println!("Generated assembly program:\n{asm_program:#?}");
         asm_program
     }
@@ -147,11 +147,11 @@ impl CompilerDriver {
             .map_err(|e| format!("`Parse` stage failed: {e}"))?;
 
         if self.option < Tacky { return Ok(()) }
-        self.tacky(c_program);
-        Ok(())
+        let tacky_program = self.tacky(c_program);
 
-        // if self.option < Codegen { return Ok(()) }
-        // let asm_program = self.codegen(c_program);
+        if self.option < Codegen { return Ok(()) }
+        let _asm_program = self.codegen(tacky_program);
+        Ok(())
 
         // if self.option < EmitAssembly { return Ok(()) }
         // self.emit_assembly(asm_program)

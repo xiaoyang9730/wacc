@@ -73,11 +73,11 @@ impl<'a> Parser<'a> {
             },
             Token::Complement => {
                 let inner_expression = Box::new(self.parse_expression()?);
-                Ok(c::UnaryOperation(c::Complement, inner_expression))
+                Ok(c::Unary(c::Complement, inner_expression))
             },
             Token::Negate => {
                 let inner_expression = Box::new(self.parse_expression()?);
-                Ok(c::UnaryOperation(c::Negate, inner_expression))
+                Ok(c::Unary(c::Negate, inner_expression))
             },
             Token::OpenParenthesis => {
                 let inner_expression = self.parse_expression()?;

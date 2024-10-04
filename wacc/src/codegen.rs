@@ -1,53 +1,92 @@
+use std::collections::HashMap;
 use crate::ast_nodes::*;
 
-pub struct Generator {
-    c_program: CProgram,
+pub fn gen_asm_program(tacky_program: TackyProgram) -> AsmProgram {
+    let mut asm_program = gen_program(tacky_program);
+    assign_pseudo_registers_to_stack(&mut asm_program);
+    fix_invalid_mov_instructions(&mut asm_program);
+    asm_program
 }
 
-impl Generator {
-    pub fn gen(&self) -> AsmProgram {
-        gen_program(&self.c_program)
+fn gen_program(tacky_program: TackyProgram) -> AsmProgram {
+    let tacky::Program(function_definition) = tacky_program;
+    asm::Program(gen_function_definition(function_definition))
+}
+
+fn gen_function_definition(tacky_function_definition: TackyFunctionDefinition) -> AsmFunctionDefinition {
+    let tacky::Function(tacky::Identifier(name), tacky_instructions) = tacky_function_definition;
+    let mut asm_instructions = Vec::new();
+    for instruction in tacky_instructions {
+        match instruction {
+            tacky::Return(val) => {
+                asm_instructions.push(asm::Mov(gen_operand(val), asm::Register(asm::AX)));
+                asm_instructions.push(AsmInstruction::Ret);
+            },
+            TackyInstruction::Unary(operator, src, dst) => {
+                asm_instructions.push(asm::Mov(gen_operand(src), gen_operand(dst.clone())));
+                asm_instructions.push(asm::Unary(gen_unary_operator(operator), gen_operand(dst)));
+            },
+        }
+    }
+    asm::Function(asm::Identifier(name), asm_instructions)
+}
+
+fn gen_operand(tacky_value: TackyOperand) -> AsmOperand {
+    match tacky_value {
+        tacky::Constant(integer) => {
+            asm::Imm(integer)
+        },
+        tacky::Variable(identifier) => {
+            let tacky::Identifier(name) = identifier;
+            asm::Pseudo(asm::Identifier(name))
+        }
     }
 }
 
-impl From<CProgram> for Generator {
-    fn from(c_program: CProgram) -> Self {
-        Self { c_program }
+fn gen_unary_operator(tacky_operator: TackyUnaryOperator) -> AsmUnaryOperator {
+    match tacky_operator {
+        tacky::Complement => asm::Not,
+        tacky::Negate => asm::Neg,
     }
 }
 
-fn gen_program(c_program: &CProgram) -> AsmProgram {
-    let c::Program(function_definition) = c_program;
-    asm::Program(
-        gen_function_definition(function_definition)
-    )
+fn assign_pseudo_registers_to_stack(asm_program: &mut AsmProgram) {
+    let asm::Program(asm::Function(_, instructions)) = asm_program;
+    let mut stack_map = HashMap::new();
+    for instruction in instructions.iter_mut() {
+        match instruction {
+            asm::Mov(src, dst) => {
+                check_and_replace_pseudo_register(src, &mut stack_map);
+                check_and_replace_pseudo_register(dst, &mut stack_map);
+            },
+            asm::Unary(_, dst) => {
+                check_and_replace_pseudo_register(dst, &mut stack_map);
+            },
+            _ => {},
+        }
+    }
+    instructions.push(asm::AllocateStack(stack_map.len() as u32));
 }
 
-fn gen_function_definition(c_function_definition: &CFunctionDefinition) -> AsmFunctionDefinition {
-    let c::Function(name, body) = c_function_definition;
-    asm::Function(
-        gen_identifier(name),
-        gen_statement(body),
-    )
+fn check_and_replace_pseudo_register(asm_operand: &mut AsmOperand, stack_map: &mut HashMap<String, u32>) {
+    if let asm::Pseudo(asm::Identifier(name)) = asm_operand {
+        if !stack_map.contains_key(name) {
+            stack_map.insert(name.clone(), stack_map.len() as u32);
+        }
+        *asm_operand = asm::Stack(*stack_map.get(name).unwrap());
+    }
 }
 
-fn gen_identifier(c_identifier: &CIdentifier) -> AsmIdentifier {
-    let c::Identifier(name) = c_identifier;
-    asm::Identifier(name.clone())
-}
-
-fn gen_statement(c_statement: &CStatement) -> Vec<AsmInstruction> {
-    let c::Return(expression) = c_statement;
-    vec![
-        asm::Mov(gen_expression(expression), asm::Register),
-        asm::Ret,
-    ]
-}
-
-fn gen_expression(c_expression: &CExpression) -> AsmOperand {
-    if let &c::Constant(integer) = c_expression {
-        asm::Imm(integer)
-    } else {
-        todo!()
+fn fix_invalid_mov_instructions(asm_program: &mut AsmProgram) {
+    let asm::Program(asm::Function(_, instructions)) = asm_program;
+    let mut list = Vec::new();
+    for (fix_pos, instruction) in instructions.iter().enumerate() {
+        if let &asm::Mov(asm::Stack(a_src), asm::Stack(a_dst)) = instruction {
+            list.push((fix_pos, a_src, a_dst));
+        }
+    }
+    for (i, (fix_pos, a_src, a_dst)) in list.iter().enumerate() {
+        instructions[fix_pos + i] = asm::Mov(asm::Stack(*a_src), asm::Register(asm::R10));
+        instructions.insert(fix_pos + i + 1, asm::Mov(asm::Register(asm::R10), asm::Stack(*a_dst)));
     }
 }

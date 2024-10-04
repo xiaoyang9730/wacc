@@ -11,27 +11,28 @@ fn gen_program(c_program: CProgram) -> TackyProgram {
 
 fn gen_function_definition(c_function_definition: CFunctionDefinition) -> TackyFunctionDefinition {
     let c::Function(c::Identifier(name), c::Return(expression)) = c_function_definition;
-
-    let mut instructions = Vec::new();
-    let result = emit_tacky(expression, &mut instructions);
-    instructions.push(tacky::Return(result));
+    let (mut instructions, operand) = gen_expression(expression);
+    instructions.push(tacky::Return(operand));
     tacky::Function(tacky::Identifier(name), instructions)
 }
 
-fn emit_tacky(c_expression: CExpression, instructions: &mut Vec<TackyInstruction>) -> TackyValue {
+fn gen_expression(c_expression: CExpression) -> (Vec<TackyInstruction>, TackyOperand) {
     match c_expression {
         c::Constant(integer) => {
-            tacky::Constant(integer)
+            (vec![], tacky::Constant(integer))
         },
-        c::UnaryOperation(operator, inner) => {
-            let src = emit_tacky(*inner, instructions);
+        c::Unary(operator, inner) => {
+            let (mut instructions, src) = gen_expression(*inner);
             let dst = tacky::Variable(tacky::Identifier(format!("tmp{}", instructions.len())));
-            let operator = match operator {
-                c::Complement => tacky::Complement,
-                c::Negate => tacky::Negate,
-            };
-            instructions.push(TackyInstruction::Unary(operator, src, dst.clone()));
-            dst
+            instructions.push(TackyInstruction::Unary(gen_unary_operator(operator), src, dst.clone()));
+            (instructions, dst)
         },
+    }
+}
+
+fn gen_unary_operator(c_operator: CUnaryOperator) -> TackyUnaryOperator {
+    match c_operator {
+        c::Complement => tacky::Complement,
+        c::Negate => tacky::Negate,
     }
 }

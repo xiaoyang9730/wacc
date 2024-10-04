@@ -30,7 +30,7 @@ pub enum CStatement {
 #[derive(Debug)]
 pub enum CExpression {
     Constant(u32),
-    UnaryOperation(CUnaryOperator, Box<CExpression>),
+    Unary(CUnaryOperator, Box<CExpression>),
 }
 
 #[derive(Debug)]

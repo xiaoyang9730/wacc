@@ -30,6 +30,7 @@ fn emit_asm_instructions(instructions: Vec<AsmInstruction>) -> String {
                     format!("movl {src}, {dst}\n")
                 },
                 asm::Ret => format!("ret\n"),
+                _ => todo!()
             }
         })
         .collect()
@@ -37,7 +38,8 @@ fn emit_asm_instructions(instructions: Vec<AsmInstruction>) -> String {
 
 fn emit_asm_operand(operand: AsmOperand) -> String {
     match operand {
-        asm::Register => format!("%eax"),
+        // asm::Register => format!("%eax"),
         asm::Imm(integer) => format!("${integer}"),
+        _ => todo!()
     }
 }

@@ -3,7 +3,9 @@ pub mod ast_node_variants {
     pub use super::AsmFunctionDefinition::*;
     pub use super::AsmIdentifier::*;
     pub use super::AsmInstruction::*;
+    pub use super::AsmUnaryOperator::*;
     pub use super::AsmOperand::*;
+    pub use super::AsmReg::*;
 }
 
 #[derive(Debug)]
@@ -24,11 +26,27 @@ pub enum AsmIdentifier {
 #[derive(Debug)]
 pub enum AsmInstruction {
     Mov(AsmOperand, AsmOperand),
+    Unary(AsmUnaryOperator, AsmOperand),
+    AllocateStack(u32),
     Ret,
+}
+
+#[derive(Debug)]
+pub enum AsmUnaryOperator {
+    Neg,
+    Not,
 }
 
 #[derive(Debug)]
 pub enum AsmOperand {
     Imm(u32),
-    Register,
+    Register(AsmReg),
+    Pseudo(AsmIdentifier),
+    Stack(u32),
+}
+
+#[derive(Debug)]
+pub enum AsmReg {
+    AX,
+    R10,
 }

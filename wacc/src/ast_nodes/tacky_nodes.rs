@@ -3,7 +3,7 @@ pub mod ast_node_variants {
     pub use super::TackyFunctionDefinition::*;
     pub use super::TackyIdentifier::*;
     pub use super::TackyInstruction::*;
-    pub use super::TackyValue::*;
+    pub use super::TackyOperand::*;
     pub use super::TackyUnaryOperator::*;
 }
 
@@ -24,12 +24,12 @@ pub enum TackyIdentifier {
 
 #[derive(Debug)]
 pub enum TackyInstruction {
-    Return(TackyValue),
-    Unary(TackyUnaryOperator, TackyValue, TackyValue),
+    Return(TackyOperand),
+    Unary(TackyUnaryOperator, TackyOperand, TackyOperand),
 }
 
 #[derive(Debug, Clone)]
-pub enum TackyValue {
+pub enum TackyOperand {
     Constant(u32),
     Variable(TackyIdentifier),
 }

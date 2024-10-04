@@ -83,6 +83,12 @@ fn chapter_2() {
     println!("{output}");
     assert!(output.ends_with("OK\n"));
     assert!(success);
+
+    println!("[CODEGEN]");
+    let (success, output) = test_compiler(&[WACC, "--chapter", "2", "--stage", "codegen"], Stderr);
+    println!("{output}");
+    assert!(output.ends_with("OK\n"));
+    assert!(success);
 }
 
 #[test]
