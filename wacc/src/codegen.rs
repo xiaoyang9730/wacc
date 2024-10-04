@@ -65,7 +65,7 @@ fn assign_pseudo_registers_to_stack(asm_program: &mut AsmProgram) {
             _ => {},
         }
     }
-    instructions.push(asm::AllocateStack(stack_map.len() as u32));
+    instructions.insert(0, asm::AllocateStack(stack_map.len() as u32));
 }
 
 fn check_and_replace_pseudo_register(asm_operand: &mut AsmOperand, stack_map: &mut HashMap<String, u32>) {

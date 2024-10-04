@@ -150,16 +150,15 @@ impl CompilerDriver {
         let tacky_program = self.tacky(c_program);
 
         if self.option < Codegen { return Ok(()) }
-        let _asm_program = self.codegen(tacky_program);
-        Ok(())
+        let asm_program = self.codegen(tacky_program);
 
-        // if self.option < EmitAssembly { return Ok(()) }
-        // self.emit_assembly(asm_program)
-        //     .map_err(|e| format!("`Emit assembly` stage failed: {e}"))?;
+        if self.option < EmitAssembly { return Ok(()) }
+        self.emit_assembly(asm_program)
+            .map_err(|e| format!("`Emit assembly` stage failed: {e}"))?;
 
-        // if self.option < All { return Ok(()) }
-        // self.assemble_and_link()
-        //     .map_err(|e| format!("`Assemble and link` stage failed: {e}"))
+        if self.option < All { return Ok(()) }
+        self.assemble_and_link()
+            .map_err(|e| format!("`Assemble and link` stage failed: {e}"))
     }
 }
 

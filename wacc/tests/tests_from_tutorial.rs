@@ -89,11 +89,17 @@ fn chapter_2() {
     println!("{output}");
     assert!(output.ends_with("OK\n"));
     assert!(success);
+
+    println!("[WHOLE COMPILER]");
+    let (success, output) = test_compiler(&[WACC, "--chapter", "2"], Stderr);
+    println!("{output}");
+    assert!(output.ends_with("OK\n"));
+    assert!(success);
 }
 
 #[test]
 fn all() {
-    // check_setup();
-    // chapter_1();
+    check_setup();
+    chapter_1();
     chapter_2();
 }
