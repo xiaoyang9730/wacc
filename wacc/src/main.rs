@@ -4,6 +4,7 @@ use compiler_driver::{CompilerDriver, CompilerDriverOption::*};
 mod lexer;
 mod parser;
 mod ast_nodes;
+mod tackygen;
 mod codegen;
 mod emit;
 
@@ -19,6 +20,7 @@ fn main() {
             "--lex"     => compiler_driver.set_option(Lex),
             "--parse"   => compiler_driver.set_option(Parse),
             "--codegen" => compiler_driver.set_option(Codegen),
+            "--tacky"   => compiler_driver.set_option(Tacky),
             "-S"        => compiler_driver.set_option(EmitAssembly),
             option => {
                 if option.starts_with('-') {

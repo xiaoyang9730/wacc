@@ -4,7 +4,8 @@ use std::process::Command;
 
 use crate::lexer::{Lexer, Tokens};
 use crate::parser::Parser;
-use crate::ast_nodes::{CProgram, AsmProgram};
+use crate::ast_nodes::{AsmProgram, CProgram, TackyProgram};
+use crate::tackygen::gen_tacky_program;
 use crate::codegen::Generator;
 use crate::emit::emit_asm_program;
 
@@ -15,10 +16,11 @@ pub enum CompilerDriverOption {
     EmitReferenceAssembly = 0,
     Lex = 1,
     Parse = 2,
-    Codegen = 3,
-    EmitAssembly = 4,
+    Tacky = 3,
+    Codegen = 4,
+    EmitAssembly = 5,
     #[default]
-    All = 5,
+    All = 6,
 }
 
 #[derive(Default)]
@@ -94,6 +96,13 @@ impl CompilerDriver {
         Ok(c_program)
     }
 
+    fn tacky(&self, c_program: CProgram) -> TackyProgram {
+        println!("--- Stage: PARSE ---");
+        let tacky = gen_tacky_program(c_program);
+        println!("Tacky:\n{tacky:#?}");
+        tacky
+    }
+
     fn codegen(&self, c_program: CProgram) -> AsmProgram {
         println!("--- Stage: CODEGEN ---");
         let asm_program = Generator::from(c_program).gen();
@@ -137,16 +146,20 @@ impl CompilerDriver {
         let c_program = self.parse(lexer.tokens())
             .map_err(|e| format!("`Parse` stage failed: {e}"))?;
 
-        if self.option < Codegen { return Ok(()) }
-        let asm_program = self.codegen(c_program);
+        if self.option < Tacky { return Ok(()) }
+        self.tacky(c_program);
+        Ok(())
 
-        if self.option < EmitAssembly { return Ok(()) }
-        self.emit_assembly(asm_program)
-            .map_err(|e| format!("`Emit assembly` stage failed: {e}"))?;
+        // if self.option < Codegen { return Ok(()) }
+        // let asm_program = self.codegen(c_program);
 
-        if self.option < All { return Ok(()) }
-        self.assemble_and_link()
-            .map_err(|e| format!("`Assemble and link` stage failed: {e}"))
+        // if self.option < EmitAssembly { return Ok(()) }
+        // self.emit_assembly(asm_program)
+        //     .map_err(|e| format!("`Emit assembly` stage failed: {e}"))?;
+
+        // if self.option < All { return Ok(()) }
+        // self.assemble_and_link()
+        //     .map_err(|e| format!("`Assemble and link` stage failed: {e}"))
     }
 }
 

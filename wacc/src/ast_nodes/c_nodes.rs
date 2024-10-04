@@ -27,7 +27,6 @@ pub enum CStatement {
     Return(CExpression),
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub enum CExpression {
     Constant(u32),

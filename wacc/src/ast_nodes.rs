@@ -11,9 +11,11 @@
 
 mod asm_nodes;
 mod c_nodes;
+mod tacky_nodes;
 
 pub use asm_nodes::*;
 pub use c_nodes::*;
+pub use tacky_nodes::*;
 
 pub mod asm {
     pub use super::asm_nodes::ast_node_variants::*;
@@ -21,4 +23,8 @@ pub mod asm {
 
 pub mod c {
     pub use super::c_nodes::ast_node_variants::*;
+}
+
+pub mod tacky {
+    pub use super::tacky_nodes::ast_node_variants::*;
 }
